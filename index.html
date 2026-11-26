@@ -215,7 +215,7 @@ function sync(){return `<div class="sync" id="syncline">${esc(syncState)}</div>`
 
 function showHome(){
   const act=workout.active;
-  let h=`<h1 class="c">תוכנית מכשירים לחדר כושר <span style="font-size:12px;font-weight:600;opacity:.75;direction:ltr;display:inline-block;background:#2a2a2a;border-radius:8px;padding:2px 7px;vertical-align:middle">${VERSION}</span></h1><div style="margin-bottom:14px;text-align:center">אימונים השבוע: ${thisWeek()} (סה"כ ${log.length})</div>`;
+  let h=`<h1 class="c">תוכנית מכשירים לחדר כושר <span style="font-size:12px;font-weight:600;direction:ltr;display:inline-block;background:#2e5d4b;color:#fff;border-radius:8px;padding:2px 7px;vertical-align:middle">${VERSION}</span></h1><div style="margin-bottom:14px;text-align:center">אימונים השבוע: ${thisWeek()} (סה"כ ${log.length})</div>`;
   if(act)h+=`<button class="btn resume" id="resume">↩ חזרה לאימון הפעיל · ${doneCount()} מתוך ${machines.length} הושלמו</button>`;
   h+=`<div class="tile" id="new"><div class="ic">💪</div><div class="t">אימון חדש</div><div class="s">(${machines.length} מכשירים)</div></div>
   <button class="btn" id="b1">ניהול מכשירים</button><button class="btn" id="b2">יומן אימונים</button>
