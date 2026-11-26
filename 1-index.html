@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#faf8f4">
+<link rel="manifest" href="manifest.json">
+<title>אימון חדר כושר</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#faf8f4;color:#2e4643;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;font-size:17px}
+#app{max-width:560px;margin:0 auto;padding:22px 20px 40px}
+h1{font-size:26px;margin:0 0 20px}
+.sub{color:#78868c;font-size:14px}
+.btn{display:block;width:100%;border:0;border-radius:18px;background:#ddede4;color:#2b4d46;font-size:18px;padding:14px 16px;min-height:54px;margin:12px 0;font-family:inherit;cursor:pointer}
+.btn.sm{display:inline-block;width:auto;min-height:0;font-size:16px;padding:8px 16px;margin:4px;border-radius:14px}
+.btn.warm{background:#f2e8d8}
+.btn.danger{background:#f6dcd8;color:#7a2e25}
+.btn.resume{background:#2e5a4e;color:#fff}
+.tile{background:#ddede4;border-radius:22px;height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:6px 0 12px;cursor:pointer;color:#2b4d46}
+.tile .ic{font-size:44px}.tile .t{font-size:22px;font-weight:bold;margin-top:6px}.tile .s{font-size:14px;color:#5a6c80}
+.row{display:flex;align-items:center;background:#fff;border:1px solid #ebe7de;border-radius:22px;padding:10px 12px;margin:10px 0;gap:14px}
+.row.done{background:#e1f1e5}.row.next{border-color:#89b09a}
+.row img,.row .ph{width:64px;height:64px;border-radius:12px;object-fit:cover;background:#f2ede3;flex:none}
+.row .nm{flex:1;font-size:20px;font-weight:bold;padding:8px 0;touch-action:none;user-select:none;-webkit-user-select:none}
+.row .meta{font-size:13px;color:#78868c;font-weight:normal}
+.chk{width:42px;height:42px;border-radius:50%;border:2px solid #89b09a;background:#fff;color:#2e5a4e;font-size:22px;flex:none;cursor:pointer}
+.row.done .chk{background:#2e5a4e;color:#fff}
+.mv{display:flex;flex-direction:column;gap:4px}.mv button{border:0;background:#f2ede3;border-radius:8px;width:32px;height:28px;font-size:14px;color:#2b4d46}
+.adj{display:flex;align-items:center;justify-content:space-between;margin:14px 0;font-size:20px}
+.adj .v{min-width:120px;text-align:center;font-weight:bold}
+.adj button{width:60px;height:54px;border:0;border-radius:14px;font-size:28px;cursor:pointer}
+.adj .minus{background:#f2e8d8;color:#40544b}.adj .plus{background:#ddede4;color:#2b4d46}
+.photo{width:100%;max-height:300px;object-fit:contain;border-radius:18px;background:#f2ede3;display:block;margin:0 0 12px}
+input[type=text],input[type=password],select,textarea{width:100%;font-size:17px;padding:12px;border:1px solid #d9d4c8;border-radius:12px;margin:6px 0;font-family:inherit;background:#fff;color:#2e4643}
+.hint{font-size:13px;color:#78868c;margin:6px 0 10px;line-height:1.5}
+.back{background:none;border:0;color:#5a6c80;font-size:16px;padding:0;margin-bottom:10px;cursor:pointer}
+.bar{height:6px;background:#e6e1d4;border-radius:4px;margin:0 0 14px;overflow:hidden}.bar i{display:block;height:100%;background:#2e5a4e}
+.logi{padding:10px 0;border-bottom:1px solid #ece8de;cursor:pointer;display:flex;justify-content:space-between;gap:8px;font-size:16px}
+.logi .x{color:#b4574d;border:0;background:none;font-size:20px}
+.modal{position:fixed;inset:0;background:rgba(30,40,38,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:10}
+.modal .box{background:#fff;border-radius:22px;padding:22px;max-width:480px;width:100%;max-height:85vh;overflow:auto}
+.modal h3{margin:0 0 10px}.modal pre{white-space:pre-wrap;font-family:inherit;margin:0 0 12px;line-height:1.5}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#2e4643;color:#fff;padding:10px 18px;border-radius:20px;font-size:15px;z-index:20;max-width:90%}
+.sync{font-size:13px;color:#78868c;margin-top:18px;text-align:center}
+.cat{display:inline-block;background:#f2e8d8;border-radius:10px;padding:2px 10px;font-size:13px;color:#6b5a3e;margin-top:4px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+"use strict";
+const VERSION="web 1.0";
+const CATS=["חזה","גב","כתפיים","ידיים","רגליים","בטן","אירובי","אחר"];
+const $app=document.getElementById("app");
+const LS=localStorage;
+const J=(k,d)=>{try{const v=LS.getItem(k);return v?JSON.parse(v):d}catch(e){return d}};
+const S=(k,v)=>{try{LS.setItem(k,JSON.stringify(v));return true}catch(e){toast("אין מקום באחסון של הדפדפן");return false}};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>"m"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const fw=w=>Number.isInteger(w)?String(w):String(w);
+
+let machines=J("gym.machines",null);
+let log=J("gym.log",[]);
+let workout=J("gym.workout",{active:false,done:{},snap:{}});
+let settings=J("gym.settings",{});
+let seed=[];           // [{id,name,category,image}]
+let syncState="";      // status text
+let sel=null;          // selected machine id in workout
+let editId=null;
+
+function toast(t){const d=document.createElement("div");d.className="toast";d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2600)}
+function modal(title,body,buttons){
+  const m=document.createElement("div");m.className="modal";
+  m.innerHTML=`<div class="box"><h3>${esc(title)}</h3>${body}<div class="btns"></div></div>`;
+  const bx=m.querySelector(".btns");
+  buttons.forEach(b=>{const x=document.createElement("button");x.className="btn sm "+(b.cls||"");x.textContent=b.text;x.onclick=()=>{m.remove();b.fn&&b.fn(m)};bx.appendChild(x)});
+  document.body.appendChild(m);return m;
+}
+function confirmDlg(title,msg,okText,fn){modal(title,`<pre>${esc(msg)}</pre>`,[{text:okText,cls:"danger",fn},{text:"ביטול"}])}
+
+// ---------- persistence + sync ----------
+function touch(){S("gym.updatedAt",Date.now());schedulePush()}
+function saveMachines(){S("gym.machines",machines);touch()}
+function saveLog(){S("gym.log",log);touch()}
+function saveWorkout(){S("gym.workout",workout)}
+function saveSettings(){S("gym.settings",settings)}
+function getPhoto(m){
+  const p=LS.getItem("gym.photo."+m.id);if(p)return p;
+  const s=seed.find(x=>x.id===m.id);return s?("data:image/jpeg;base64,"+s.image):"";
+}
+function setPhoto(id,data){try{if(data)LS.setItem("gym.photo."+id,data);else LS.removeItem("gym.photo."+id)}catch(e){toast("אין מקום לתמונה")}}
+
+async function loadSeed(){
+  try{const r=await fetch("seed.json",{cache:"no-cache"});seed=(await r.json()).map((x,i)=>({id:"m"+(i+1),...x}))}catch(e){seed=[]}
+  if(machines===null){
+    machines=seed.map(s=>({id:s.id,name:s.name,sets:3,weight:10,category:s.category||""}));
+    S("gym.machines",machines);
+  }
+}
+const b64e=s=>btoa(unescape(encodeURIComponent(s)));
+const b64d=s=>decodeURIComponent(escape(atob(s.replace(/\n/g,""))));
+function ghCfg(){
+  if(!settings.ghToken||!settings.ghRepo)return null;
+  return {token:settings.ghToken.trim(),repo:settings.ghRepo.trim(),path:(settings.ghPath||"plan.json").trim()};
+}
+async function ghReq(method,body){
+  const c=ghCfg();
+  const r=await fetch(`https://api.github.com/repos/${c.repo}/contents/${c.path}`+(method==="GET"?"?t="+Date.now():""),{
+    method,headers:{"Authorization":"Bearer "+c.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"},
+    body:body?JSON.stringify(body):undefined});
+  return r;
+}
+function payload(){return {version:1,updatedAt:J("gym.updatedAt",0),machines,log}}
+let pushTimer=null,remoteSha=null,pushing=false;
+function schedulePush(){
+  if(!ghCfg())return;
+  clearTimeout(pushTimer);pushTimer=setTimeout(push,2000);
+}
+async function push(){
+  const c=ghCfg();if(!c||pushing)return;
+  pushing=true;
+  try{
+    for(let attempt=0;attempt<2;attempt++){
+      const body={message:"עדכון תוכנית אימון",content:b64e(JSON.stringify(payload(),null,1))};
+      if(remoteSha)body.sha=remoteSha;
+      const r=await ghReq("PUT",body);
+      if(r.ok){const j=await r.json();remoteSha=j.content.sha;setSync("☁ נשמר ב-GitHub · "+new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"}));break}
+      if(r.status===409||r.status===422){await pull(true);continue}
+      throw new Error(await ghErr(r));
+    }
+  }catch(e){setSync("⚠ שמירה ל-GitHub נכשלה: "+e.message)}
+  pushing=false;
+}
+async function ghErr(r){
+  if(r.status===401)return "הטוקן לא תקף";
+  if(r.status===403)return "אין הרשאה (בדוק שלטוקן יש Contents: Read and write)";
+  if(r.status===404)return "המאגר לא נמצא (בדוק שם מאגר והרשאות הטוקן)";
+  return "שגיאה "+r.status;
+}
+async function pull(silent){
+  const c=ghCfg();if(!c)return;
+  try{
+    const r=await ghReq("GET");
+    if(r.status===404){remoteSha=null;const t=await fetch(`https://api.github.com/repos/${c.repo}`,{headers:{"Authorization":"Bearer "+c.token}});
+      if(t.ok){await push();return}setSync("⚠ "+await ghErr(r));return}
+    if(!r.ok){setSync("⚠ "+await ghErr(r));return}
+    const j=await r.json();remoteSha=j.sha;
+    const rem=JSON.parse(b64d(j.content));
+    const localT=J("gym.updatedAt",0);
+    // log: union by timestamp, so no workout is ever lost
+    const seen=new Set(log.map(e=>e.ts));let added=false;
+    (rem.log||[]).forEach(e=>{if(!seen.has(e.ts)){log.push(e);added=true}});
+    log.sort((a,b)=>a.ts-b.ts);
+    if(rem.updatedAt>localT&&Array.isArray(rem.machines)){machines=rem.machines;S("gym.machines",machines);S("gym.updatedAt",rem.updatedAt)}
+    if(added||rem.updatedAt>localT)S("gym.log",log);
+    setSync("☁ מסונכרן עם GitHub · "+new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"}));
+    if(!silent){if(rem.updatedAt<localT||added)schedulePush();render()}
+  }catch(e){setSync("⚠ אין חיבור ל-GitHub")}
+}
+function setSync(t){syncState=t;const el=document.getElementById("syncline");if(el)el.textContent=t}
+
+// ---------- helpers ----------
+function weekStart(ts){const d=new Date(ts);d.setHours(0,0,0,0);d.setDate(d.getDate()-d.getDay());return d.getTime()}
+function thisWeek(){const ws=weekStart(Date.now());return log.filter(e=>e.ts>=ws).length}
+function byId(id){return machines.find(m=>m.id===id)}
+function doneCount(){return machines.filter(m=>workout.done[m.id]).length}
+function nowLine(){return new Date().toLocaleString("he-IL",{weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})}
+function go(h){if(location.hash==="#"+h)render();else location.hash=h}
+window.addEventListener("hashchange",render);
+
+// ---------- screens ----------
+function render(){
+  const h=(location.hash||"#home").slice(1);
+  const [scr,arg]=h.split("/");
+  if(scr==="machines")return showMachines();
+  if(scr==="edit")return showEdit(arg);
+  if(scr==="workout")return showWorkout();
+  if(scr==="machine")return showSelected(arg);
+  if(scr==="log")return showLog();
+  if(scr==="settings")return showSettings();
+  showHome();
+}
+function sync(){return `<div class="sync" id="syncline">${esc(syncState)}</div>`}
+
+function showHome(){
+  const act=workout.active;
+  let h=`<h1>אימון חדר כושר</h1><div style="margin-bottom:14px">אימונים השבוע: ${thisWeek()} (סה"כ ${log.length})</div>`;
+  if(act)h+=`<button class="btn resume" id="resume">↩ חזרה לאימון הפעיל · ${doneCount()} מתוך ${machines.length} הושלמו</button>`;
+  h+=`<div class="tile" id="new"><div class="ic">💪</div><div class="t">אימון חדש</div><div class="s">(${machines.length} מכשירים)</div></div>
+  <button class="btn" id="b1">ניהול מכשירים</button><button class="btn" id="b2">יומן אימונים</button>
+  <button class="btn" id="b3">תובנה על האימון</button><button class="btn" id="b4">הגדרות וסנכרון</button>${sync()}
+  <div class="sync">${VERSION}</div>`;
+  $app.innerHTML=h;
+  if(act)document.getElementById("resume").onclick=()=>go("workout");
+  document.getElementById("new").onclick=()=>{
+    if(!machines.length){toast("קודם מוסיפים מכשירים");return go("machines")}
+    const start=()=>{workout={active:true,done:{},snap:{},started:Date.now()};saveWorkout();go("workout")};
+    if(act)confirmDlg("יש אימון פעיל","להתחיל אימון חדש? האימון הפעיל לא יישמר ביומן.","התחל חדש",start);else start();
+  };
+  document.getElementById("b1").onclick=()=>go("machines");
+  document.getElementById("b2").onclick=()=>go("log");
+  document.getElementById("b3").onclick=insight;
+  document.getElementById("b4").onclick=()=>go("settings");
+}
+
+function thumb(m){const p=getPhoto(m);return p?`<img src="${p}" alt="">`:`<div class="ph"></div>`}
+
+function showMachines(){
+  let h=`<button class="back" id="bk">→ חזרה</button><h1>המכשירים שלי</h1>
+  <input type="text" id="nn" placeholder="שם מכשיר חדש"><button class="btn" id="add">הוסף מכשיר</button>`;
+  machines.forEach((m,i)=>{
+    h+=`<div class="row" data-id="${m.id}">${thumb(m)}<div class="nm" style="touch-action:auto">${esc(m.name)}<div class="meta">${m.sets} סטים · ${fw(m.weight)} ק״ג</div>${m.category?`<span class="cat">${esc(m.category)}</span>`:""}</div>
+    <div class="mv"><button data-up="${i}" aria-label="העלה מכשיר">▲</button><button data-dn="${i}" aria-label="הורד מכשיר">▼</button></div></div>`;
+  });
+  $app.innerHTML=h;
+  document.getElementById("bk").onclick=()=>go("home");
+  document.getElementById("add").onclick=()=>{
+    const v=document.getElementById("nn").value.trim();if(!v)return toast("כתוב שם למכשיר");
+    const m={id:uid(),name:v,sets:3,weight:10,category:""};machines.push(m);saveMachines();go("edit/"+m.id);
+  };
+  $app.querySelectorAll(".row").forEach(r=>r.onclick=e=>{if(e.target.closest(".mv"))return;go("edit/"+r.dataset.id)});
+  $app.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>move(+b.dataset.up,-1));
+  $app.querySelectorAll("[data-dn]").forEach(b=>b.onclick=()=>move(+b.dataset.dn,1));
+}
+function move(i,d){const j=i+d;if(j<0||j>=machines.length)return;[machines[i],machines[j]]=[machines[j],machines[i]];saveMachines();showMachines()}
+
+function adjRow(label,id,valFn){return `<div class="adj"><span>${label}</span><button class="minus" data-a="${id}-">−</button><span class="v" id="v-${id}">${valFn()}</span><button class="plus" data-a="${id}+">+</button></div>`}
+function bindAdj(m,after){
+  $app.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{
+    const a=b.dataset.a;
+    if(a==="sets-"&&m.sets>1)m.sets--;
+    if(a==="sets+"&&m.sets<20)m.sets++;
+    if(a==="w-"&&m.weight>=2.5)m.weight-=2.5;
+    if(a==="w+"&&m.weight<500)m.weight+=2.5;
+    saveMachines();
+    document.getElementById("v-sets").textContent=m.sets;document.getElementById("v-w").textContent=fw(m.weight)+" ק״ג";
+    after&&after(m);
+  });
+}
+
+function showEdit(id){
+  const m=byId(id);if(!m)return go("machines");
+  const p=getPhoto(m);
+  $app.innerHTML=`<button class="back" id="bk">→ חזרה</button><h1>עריכת מכשיר</h1>
+  ${p?`<img class="photo" id="ph" src="${p}" alt="${esc(m.name)}">`:""}
+  <input type="text" id="nm" value="${esc(m.name)}">
+  <select id="cat"><option value="">קבוצת שרירים</option>${CATS.map(c=>`<option ${m.category===c?"selected":""}>${c}</option>`).join("")}</select>
+  ${adjRow("סטים","sets",()=>m.sets)}${adjRow("משקל","w",()=>fw(m.weight)+" ק״ג")}
+  <input type="file" id="file" accept="image/*" hidden><input type="file" id="cam" accept="image/*" capture="environment" hidden>
+  <button class="btn" id="pc">${p?"החלפת תמונה":"הוספת תמונה"} · צילום</button>
+  <button class="btn" id="pg">בחירה מהגלריה</button>
+  <button class="btn" id="ai">זיהוי אוטומטי עם Gemini</button>
+  ${p?`<button class="btn warm" id="rp">הסרת תמונה</button>`:""}
+  <button class="btn" id="dn">סיום עריכה</button><button class="btn danger" id="del">מחיקת מכשיר</button>
+  <div class="hint">התמונות נשמרות רק במכשיר הזה ואינן עולות ל-GitHub.</div>`;
+  bindAdj(m);
+  const q=s=>document.getElementById(s);
+  q("bk").onclick=q("dn").onclick=()=>go("machines");
+  q("nm").onchange=()=>{const v=q("nm").value.trim();if(v){m.name=v;saveMachines()}};
+  q("cat").onchange=()=>{m.category=q("cat").value;saveMachines()};
+  q("pc").onclick=()=>q("cam").click();q("pg").onclick=()=>q("file").click();
+  [q("cam"),q("file")].forEach(inp=>inp.onchange=async()=>{const f=inp.files[0];if(!f)return;toast("שומר תמונה…");
+    try{setPhoto(m.id,await shrink(f,800));render()}catch(e){toast("לא ניתן לקרוא את התמונה")}});
+  if(q("rp"))q("rp").onclick=()=>{setPhoto(m.id,"");render()};
+  q("ai").onclick=()=>identify(m);
+  q("del").onclick=()=>confirmDlg("למחוק את המכשיר?","המכשיר והתמונה יימחקו. האימונים שביומן יישמרו.","מחיקה",()=>{
+    machines=machines.filter(x=>x.id!==m.id);setPhoto(m.id,"");delete workout.done[m.id];saveWorkout();saveMachines();go("machines")});
+}
+function shrink(file,max){return new Promise((res,rej)=>{
+  const img=new Image(),u=URL.createObjectURL(file);
+  img.onload=()=>{const f=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");
+    c.width=Math.max(1,Math.round(img.width*f));c.height=Math.max(1,Math.round(img.height*f));
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL("image/jpeg",.72))};
+  img.onerror=rej;img.src=u})}
+
+function rowHTML(m,i,next){
+  const d=!!workout.done[m.id];
+  return `<div class="row ${d?"done":""} ${next===m.id?"next":""}" data-id="${m.id}">${thumb(m)}
+  <div class="nm" data-id="${m.id}">${esc(m.name)}<div class="meta">${m.sets} סטים · ${fw(workout.snap[m.id]?workout.snap[m.id].weight:m.weight)} ק״ג${d?" · בוצע":""}</div></div>
+  <button class="chk" data-chk="${m.id}" aria-label="${d?"בוצע":"סימון כבוצע"}">${d?"✓":""}</button></div>`;
+}
+function showWorkout(){
+  if(!workout.active)return go("home");
+  const next=(machines.find(m=>!workout.done[m.id])||{}).id;
+  let h=`<button class="back" id="bk">→ יציאה זמנית למסך הראשי (האימון נשמר)</button><h1>אימון נוכחי</h1>
+  <div class="sub">${nowLine()}</div>
+  <div style="margin:8px 0 6px;color:#5a6c80;font-size:16px">${doneCount()} מתוך ${machines.length} מכשירים הושלמו</div>
+  <div class="bar"><i style="width:${machines.length?100*doneCount()/machines.length:0}%"></i></div>
+  <div class="hint">↑ החלק את שם המכשיר למעלה (או לחץ ✓) לסימון כבוצע · הקש על המכשיר לפתיחה · מכשיר שבוצע אפשר לפתוח ולעדכן בו משקל</div>`;
+  machines.forEach((m,i)=>h+=rowHTML(m,i,next));
+  h+=`<button class="btn" id="fin">סיום אימון</button>`;
+  $app.innerHTML=h;
+  document.getElementById("bk").onclick=()=>go("home");
+  $app.querySelectorAll(".row").forEach(r=>r.onclick=e=>{if(e.target.closest(".chk"))return;go("machine/"+r.dataset.id)});
+  $app.querySelectorAll("[data-chk]").forEach(b=>b.onclick=e=>{e.stopPropagation();toggleDone(b.dataset.chk)});
+  $app.querySelectorAll(".nm").forEach(n=>swipeUp(n,()=>{if(!workout.done[n.dataset.id])toggleDone(n.dataset.id)},()=>go("machine/"+n.dataset.id)));
+  document.getElementById("fin").onclick=()=>confirmDlg("לסיים את האימון?",`${doneCount()} מתוך ${machines.length} מכשירים בוצעו. האימון יישמר ביומן עם המכשירים שבוצעו בלבד.`,"סיום ושמירה",finishWorkout);
+}
+function swipeUp(el,onUp,onTap){
+  let x=0,y=0,t=false;
+  el.addEventListener("touchstart",e=>{x=e.touches[0].clientX;y=e.touches[0].clientY;t=true},{passive:true});
+  el.addEventListener("touchend",e=>{if(!t)return;t=false;const c=e.changedTouches[0],dy=y-c.clientY,dx=Math.abs(c.clientX-x);
+    if(dy>=40&&dy>dx*1.3){e.preventDefault();navigator.vibrate&&navigator.vibrate(15);onUp()}
+    else if(dx<12&&Math.abs(dy)<12){e.preventDefault();onTap()}});
+  el.addEventListener("click",e=>{e.stopPropagation();onTap()});
+}
+function toggleDone(id){
+  const m=byId(id);if(!m)return;
+  if(workout.done[id]){delete workout.done[id];delete workout.snap[id]}
+  else{workout.done[id]=true;workout.snap[id]={sets:m.sets,weight:m.weight}}
+  saveWorkout();
+  if(machines.every(x=>workout.done[x.id]))return finishWorkout();
+  showWorkout();
+}
+function showSelected(id){
+  const m=byId(id);if(!m||!workout.active)return go("workout");
+  const d=!!workout.done[id];
+  $app.innerHTML=`<button class="back" id="bk">→ חזרה לרשימת האימון</button><h1>${esc(m.name)}</h1>
+  ${getPhoto(m)?`<img class="photo" src="${getPhoto(m)}" alt="${esc(m.name)}">`:""}
+  ${d?`<div class="hint" style="font-size:15px">המכשיר סומן כבוצע. אפשר לעדכן משקל וסטים, והשינוי יישמר גם באימון הזה וגם כברירת מחדל לפעם הבאה.</div>`:""}
+  ${adjRow("סטים","sets",()=>m.sets)}${adjRow("משקל","w",()=>fw(m.weight)+" ק״ג")}
+  ${d?`<button class="btn" id="ok">שמירה וחזרה</button>`:`<button class="btn" id="ok">אישור וסיום מכשיר</button>`}
+  ${d?`<button class="btn warm" id="un">ביטול סימון "בוצע"</button>`:""}`;
+  bindAdj(m,mm=>{if(workout.done[id]){workout.snap[id]={sets:mm.sets,weight:mm.weight};saveWorkout()}});
+  document.getElementById("bk").onclick=()=>go("workout");
+  document.getElementById("ok").onclick=()=>{if(d)go("workout");else toggleDone(id)};
+  if(d)document.getElementById("un").onclick=()=>{toggleDone(id);go("workout")};
+}
+function finishWorkout(){
+  if(!workout.active)return;
+  const items=machines.filter(m=>workout.done[m.id]).map(m=>{const s=workout.snap[m.id]||{sets:m.sets,weight:m.weight};return {name:m.name,sets:s.sets,weight:s.weight}});
+  const total=machines.length,n=items.length;
+  log.push({ts:Date.now(),machines:items});saveLog();
+  workout={active:false,done:{},snap:{}};saveWorkout();
+  history.replaceState(null,"","#home");
+  $app.innerHTML=`<h1>כל הכבוד! האימון הושלם</h1><p>זהו אימון מספר ${log.length} שלך. בוצעו ${n} מתוך ${total} מכשירים.</p>
+  <button class="btn" id="i">תובנה על האימון</button><button class="btn" id="h">חזרה למסך הראשי</button>`;
+  document.getElementById("i").onclick=insight;document.getElementById("h").onclick=()=>go("home");
+}
+
+function showLog(){
+  const weeks=8,now=weekStart(Date.now()),wk=7*864e5,counts=[],labels=[];
+  for(let w=0;w<weeks;w++){const ws=now-(weeks-1-w)*wk;const d=new Date(ws);labels.push(d.getDate()+"/"+(d.getMonth()+1));
+    counts.push(log.filter(e=>weekStart(e.ts)===ws).length)}
+  const max=Math.max(1,...counts);
+  let svg=`<svg viewBox="0 0 320 170" width="100%" style="direction:ltr;margin:0 0 14px"><line x1="0" y1="140" x2="320" y2="140" stroke="#d6ded8"/>`;
+  counts.forEach((c,i)=>{const slot=40,bw=22,x=i*slot+(slot-bw)/2,bh=c/max*110,y=140-bh;
+    svg+=`<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="5" fill="${i===weeks-1?"#2e5a4e":"#7aa596"}"/><text x="${i*slot+20}" y="${y-4}" text-anchor="middle" font-size="11" fill="#2e4643">${c}</text><text x="${i*slot+20}" y="158" text-anchor="middle" font-size="9" fill="#78868c">${labels[i]}</text>`});
+  svg+="</svg>";
+  let h=`<button class="back" id="bk">→ חזרה</button><h1>יומן אימונים</h1><div style="margin-bottom:12px">אימונים השבוע: ${thisWeek()} (סה"כ ${log.length})</div>${svg}
+  <div class="hint">הקש על אימון לצפייה בפרטים · ✕ למחיקה</div>`;
+  for(let i=log.length-1;i>=0;i--){const e=log[i];
+    h+=`<div class="logi" data-i="${i}"><span>${new Date(e.ts).toLocaleString("he-IL",{dateStyle:"short",timeStyle:"short"})} · ${e.machines.length} מכשירים: ${esc(e.machines.map(m=>m.name).join(", "))}</span><button class="x" data-x="${i}" aria-label="מחיקת האימון">✕</button></div>`}
+  $app.innerHTML=h;
+  document.getElementById("bk").onclick=()=>go("home");
+  $app.querySelectorAll(".logi").forEach(r=>r.onclick=e=>{if(e.target.closest(".x"))return;const x=log[+r.dataset.i];
+    modal(new Date(x.ts).toLocaleString("he-IL",{dateStyle:"full",timeStyle:"short"}),`<pre>${x.machines.map(m=>`• ${esc(m.name)} — ${m.sets} סטים · ${fw(m.weight)} ק"ג`).join("\n")}</pre>`,[{text:"סגור"}])});
+  $app.querySelectorAll("[data-x]").forEach(b=>b.onclick=e=>{e.stopPropagation();const i=+b.dataset.x;
+    confirmDlg("למחוק את האימון?","האימון יימחק מהיומן. אי אפשר לשחזר אותו.","מחיקה",()=>{log.splice(i,1);saveLog();showLog()})});
+}
+
+// ---------- Gemini ----------
+async function gemini(parts,config){
+  const key=settings.gemKey;
+  if(!key){modal("נדרש מפתח Gemini אישי","<pre>כדי להשתמש בזיהוי ובתובנות צריך מפתח אישי מ-Google AI Studio. אין מפתח משותף.</pre>",[{text:"הגדרות",fn:()=>go("settings")},{text:"סגור"}]);return null}
+  const model=settings.gemModel||"gemini-3.5-flash-lite";
+  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:"POST",
+    headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify({contents:[{role:"user",parts}],generationConfig:config})});
+  if(!r.ok){toast(({400:"Google דחה את הבקשה, בדוק את המפתח",401:"המפתח לא תקף",403:"המפתח לא תקף",404:"המודל אינו זמין, אפשר לשנות בהגדרות",429:"מכסת הבקשות של Google מוצתה"})[r.status]||"שגיאה "+r.status);return null}
+  const j=await r.json();
+  const p=j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts;
+  if(!p){toast("לא התקבלה תשובה");return null}
+  return p.map(x=>x.text||"").filter(Boolean).join("\n").trim();
+}
+async function smallB64(m){
+  const p=getPhoto(m);if(!p)return null;
+  const blob=await (await fetch(p)).blob();return (await shrink(blob,768)).split(",")[1];
+}
+function identify(m){
+  if(!getPhoto(m))return toast("קודם מוסיפים תמונה");
+  modal("זיהוי מכשיר עם Gemini","<pre>התמונה תישלח ל-Google לזיהוי המכשיר. בשירות החינמי Google עשויה להשתמש בקלט ובתשובות לשיפור המוצרים. אין לשלוח תמונות עם אנשים או מידע אישי.</pre>",[
+    {text:"שליחה וזיהוי",fn:async()=>{
+      toast("מזהה את המכשיר…");
+      try{
+        const prompt='Identify the gym machine shown in the photo. If the machine has a name placard, sticker or instruction label, read it and prefer that exact name. Otherwise use the specific standard name of the machine, not a generic description. Reply with valid JSON only, no markdown and no explanation, in exactly this structure: {"name_en":"...","name_he":"...","category":"...","confidence":0.0}. name_en: the English name of the machine, for example "Leg Press". name_he: a short Hebrew translation, for example "פשיטת ברכיים". category: exactly one of '+CATS.join(", ")+'. confidence: a number from 0 to 1.';
+        const t=await gemini([{text:prompt},{inlineData:{mimeType:"image/jpeg",data:await smallB64(m)}}],{maxOutputTokens:800,responseMimeType:"application/json"});
+        if(!t)return;
+        let o;try{o=JSON.parse(t.replace(/^```json|^```|```$/g,"").trim())}catch(e){return toast("התשובה לא הייתה קריאה")}
+        const cat=CATS.includes(o.category)?o.category:"אחר",he=(o.name_he||o.name_en||"").trim();
+        modal("זוהה מכשיר",`<pre>${esc(he)} (${esc(o.name_en||"")})\nקבוצה: ${esc(cat)}\nביטחון: ${o.confidence>=.75?"גבוהה":o.confidence>=.45?"בינונית":"נמוכה"}</pre>`,[
+          {text:"שמירה",fn:()=>{m.name=he;m.category=cat;saveMachines();render()}},{text:"ביטול"}]);
+      }catch(e){toast("לא ניתן להתחבר ל-Google")}}},{text:"ביטול"}]);
+}
+function summary(){
+  let t="ענה בעברית. תן משוב כללי קצר וזהיר על איזון קבוצות השרירים, גיוון ומעקב התקדמות. אל תניח גיל, מצב רפואי, ניסיון או מטרות שלא נמסרו. אל תמציא חזרות או עצימות ואל תיתן אבחנה רפואית. שאל לפני המלצה להעלות משקל. משקל במכשיר סיוע עשוי להיות סיוע ולא התנגדות.\n\nהמכשירים שלי:\n";
+  machines.forEach(m=>t+=`${m.name}: ${m.sets} סטים, ${fw(m.weight)} ק״ג\n`);
+  log.slice(-3).forEach(e=>{t+=`\nאימון שהושלם ${new Date(e.ts).toLocaleString("he-IL")}:\n`;e.machines.forEach(m=>t+=`${m.name}: ${m.sets} סטים, ${fw(m.weight)} ק״ג\n`)});
+  return t;
+}
+function insight(){
+  if(!settings.gemKey)return gemini([],{});
+  modal("שליחת סיכום ל-Gemini",`<pre>בלחיצה על שליחה, שמות המכשירים, הסטים, המשקלים ועד שלושה אימונים אחרונים יישלחו ל-Google. בשירות החינמי Google עשויה להשתמש בקלט ובתשובות לשיפור המוצרים. אין לשלוח מידע אישי או רגיש.</pre>`,[
+    {text:"שליחה וקבלת תובנה",fn:async()=>{toast("מקבל תובנה…");try{const t=await gemini([{text:summary()}],{maxOutputTokens:1200});
+      if(t)modal("תובנה על האימון",`<pre>${esc(t)}</pre>`,[{text:"סגור"}])}catch(e){toast("לא ניתן להתחבר ל-Google")}}},{text:"ביטול"}]);
+}
+
+// ---------- settings ----------
+function showSettings(){
+  $app.innerHTML=`<button class="back" id="bk">→ חזרה</button><h1>הגדרות וסנכרון</h1>
+  <h3>שמירת התוכנית ב-GitHub</h3>
+  <div class="hint">התוכנית (מכשירים, סטים, משקלים ויומן אימונים) נשמרת כקובץ JSON במאגר פרטי בחשבון GitHub שלך, ונטענת מחדש בכל מכשיר. התמונות נשארות רק במכשיר. הטוקן נשמר בדפדפן הזה בלבד.</div>
+  <input type="text" id="repo" placeholder="מאגר, לדוגמה: miromiro1515/gym-data" value="${esc(settings.ghRepo||"")}" dir="ltr">
+  <input type="text" id="path" placeholder="plan.json" value="${esc(settings.ghPath||"plan.json")}" dir="ltr">
+  <input type="password" id="tok" placeholder="${settings.ghToken?"טוקן שמור (הדבק חדש כדי להחליף)":"הדבק טוקן GitHub"}" dir="ltr" autocomplete="off">
+  <div class="hint">יצירת טוקן: GitHub ← Settings ← Developer settings ← Fine-grained tokens ← Generate. בחר Only select repositories ובחר רק את מאגר הנתונים, והרשאה Contents: Read and write. עדיף תוקף ארוך.</div>
+  <button class="btn" id="save">שמירה וסנכרון עכשיו</button>
+  ${settings.ghToken?`<button class="btn warm" id="off">ניתוק GitHub מהמכשיר הזה</button>`:""}
+  ${sync()}
+  <h3 style="margin-top:26px">גיבוי ידני (בלי GitHub)</h3><div class="hint">אפשר לשלוח את קובץ התוכנית לעצמך בוואטסאפ, ולייבא אותו במכשיר אחר. לא צריך חשבון GitHub.</div>
+  <button class="btn" id="shr">שיתוף הגיבוי (וואטסאפ ועוד)</button><button class="btn" id="exp">שמירת קובץ גיבוי במכשיר</button><button class="btn" id="imp">ייבוא מקובץ</button><input type="file" id="impf" accept=".json,application/json" hidden>
+  <h3 style="margin-top:26px">Gemini</h3>
+  <div class="hint">לכל משתמש מפתח אישי מ-Google AI Studio (חשבון ללא חיוב נשאר במכסה החינמית). המפתח נשמר בדפדפן הזה בלבד ולא עולה ל-GitHub. לשימוש בני 18 ומעלה.</div>
+  <input type="password" id="gk" placeholder="${settings.gemKey?"מפתח שמור (הדבק חדש כדי להחליף)":"הדבק מפתח Gemini API"}" dir="ltr" autocomplete="off">
+  <input type="text" id="gm" value="${esc(settings.gemModel||"gemini-3.5-flash-lite")}" dir="ltr">
+  <button class="btn" id="sg">שמירת Gemini</button>
+  <button class="btn warm" id="ao">פתיחת Google AI Studio</button>
+  ${settings.gemKey?`<button class="btn danger" id="dg">מחיקת מפתח</button>`:""}
+  <div class="sync">${VERSION}</div>`;
+  const q=s=>document.getElementById(s);
+  q("bk").onclick=()=>go("home");
+  q("save").onclick=()=>{
+    settings.ghRepo=q("repo").value.trim();settings.ghPath=q("path").value.trim()||"plan.json";
+    if(q("tok").value.trim())settings.ghToken=q("tok").value.trim();
+    if(!/^[\w.-]+\/[\w.-]+$/.test(settings.ghRepo))return toast("שם מאגר בצורה owner/repo");
+    if(!settings.ghToken)return toast("חסר טוקן");
+    saveSettings();remoteSha=null;setSync("מסנכרן…");pull(false);
+  };
+  if(q("off"))q("off").onclick=()=>{delete settings.ghToken;saveSettings();showSettings()};
+  q("exp").onclick=()=>{const b=new Blob([JSON.stringify(payload(),null,1)],{type:"application/json"});const a=document.createElement("a");
+    a.href=URL.createObjectURL(b);a.download="gym-plan-"+new Date().toISOString().slice(0,10)+".json";a.click()};
+  q("shr").onclick=async()=>{
+    const name="gym-plan-"+new Date().toISOString().slice(0,10)+".json";
+    const f=new File([JSON.stringify(payload(),null,1)],name,{type:"application/json"});
+    try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:"תוכנית אימון"});return}}catch(e){if(e&&e.name==="AbortError")return}
+    q("exp").click();toast("השיתוף לא נתמך כאן, הקובץ ירד למכשיר");};
+  q("imp").onclick=()=>q("impf").click();
+  q("impf").onchange=async()=>{try{const o=JSON.parse(await q("impf").files[0].text());
+    if(!Array.isArray(o.machines))throw 0;
+    confirmDlg("לייבא את הקובץ?","המכשירים הנוכחיים יוחלפו בקובץ. אימונים מהקובץ יתווספו ליומן.","ייבוא",()=>{
+      machines=o.machines;const seen=new Set(log.map(e=>e.ts));(o.log||[]).forEach(e=>{if(!seen.has(e.ts))log.push(e)});log.sort((a,b)=>a.ts-b.ts);
+      S("gym.machines",machines);S("gym.log",log);touch();toast("יובא");go("home")})}catch(e){toast("הקובץ לא תקין")}};
+  q("sg").onclick=()=>{if(q("gk").value.trim())settings.gemKey=q("gk").value.trim();settings.gemModel=q("gm").value.trim()||"gemini-3.5-flash-lite";saveSettings();toast("נשמר");showSettings()};
+  q("ao").onclick=()=>window.open("https://aistudio.google.com/apikey","_blank");
+  if(q("dg"))q("dg").onclick=()=>{delete settings.gemKey;saveSettings();showSettings()};
+}
+
+(async function(){
+  await loadSeed();
+  render();
+  if(ghCfg())pull(false);
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&ghCfg()&&!pushing)pull(false)});
+})();
+</script>
+</body>
+</html>
