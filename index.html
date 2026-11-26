@@ -10,7 +10,18 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="אימון">
-<title>אימון חדר כושר</title>
+<title>אימון חדר כושר: תוכנית אימונים ורישום אימונים, אפליקציה חינמית</title>
+<meta name="description" content="אפליקציה חינמית בעברית לניהול תוכנית אימונים בחדר כושר: רשימת מכשירים עם תמונה, סטים ומשקלים, יומן אימונים וגרף שבועי. עובדת בדפדפן ובטלפון, בלי הרשמה.">
+<meta name="keywords" content="תוכנית אימונים, ניהול תוכנית אימונים, אפליקציה חינמית לרישום אימונים, אימון חדר כושר, יומן אימונים, מעקב משקלים, מכשירי כושר">
+<link rel="canonical" href="https://miromiro1515.github.io/gym-trainer-web/">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="he_IL">
+<meta property="og:title" content="אימון חדר כושר: תוכנית אימונים ורישום אימונים">
+<meta property="og:description" content="אפליקציה חינמית בעברית לניהול תוכנית אימונים, מכשירים, סטים ומשקלים ויומן אימונים.">
+<meta property="og:url" content="https://miromiro1515.github.io/gym-trainer-web/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"אימון חדר כושר","description":"אפליקציה חינמית בעברית לניהול תוכנית אימונים ורישום אימונים בחדר כושר","url":"https://miromiro1515.github.io/gym-trainer-web/","inLanguage":"he","applicationCategory":"HealthApplication","operatingSystem":"Android, iOS, Web","offers":{"@type":"Offer","price":"0","priceCurrency":"ILS"}}</script>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:#faf8f4;color:#2e4643;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;font-size:17px}
@@ -31,7 +42,7 @@ h1{font-size:26px;margin:0 0 20px}
 .row .meta{font-size:13px;color:#78868c;font-weight:normal}
 .chk{width:42px;height:42px;border-radius:50%;border:2px solid #89b09a;background:#fff;color:#2e5a4e;font-size:22px;flex:none;cursor:pointer}
 .row.done .chk{background:#2e5a4e;color:#fff}
-.mv{display:flex;flex-direction:column;gap:4px}.mv button{border:0;background:#f2ede3;border-radius:8px;width:32px;height:28px;font-size:14px;color:#2b4d46}
+.row.lift{box-shadow:0 12px 28px rgba(30,40,38,.28);opacity:.97}.mv{display:flex;flex-direction:column;gap:4px}.mv button{border:0;background:#f2ede3;border-radius:8px;width:32px;height:28px;font-size:14px;color:#2b4d46}
 .adj{display:flex;align-items:center;justify-content:space-between;margin:14px 0;font-size:20px}
 .adj .v{min-width:120px;text-align:center;font-weight:bold}
 .adj button{touch-action:manipulation;width:60px;height:54px;border:0;border-radius:14px;font-size:28px;cursor:pointer}
@@ -52,10 +63,13 @@ input[type=text],input[type=password],select,textarea{width:100%;font-size:17px;
 </style>
 </head>
 <body>
-<div id="app"></div>
+<div id="app"><h1>אימון חדר כושר: תוכנית אימונים</h1><p>אפליקציה חינמית לרישום אימונים וניהול תוכנית אימונים בחדר כושר. מוסיפים מכשירים עם תמונה, קובעים סטים ומשקלים, מסמנים תרגילים שבוצעו ועוקבים אחרי יומן האימונים והגרף השבועי.</p><noscript><p>האפליקציה דורשת הפעלת JavaScript.</p></noscript></div>
 <script>
 "use strict";
-const VERSION="web 1.3";
+const VERSION="web 1.4";
+const BADGE="https://visitor-badge.laobi.icu/badge?page_id=miromiro1515.gym-trainer-web&left_text=%D7%91%D7%99%D7%A7%D7%95%D7%A8%D7%99%D7%9D";
+// visit counter: one count per browser, no personal data, refresh does not count again
+try{if(!localStorage.getItem("gym.counted")){const c=new Image();c.onload=()=>{try{localStorage.setItem("gym.counted","1")}catch(e){}};c.src=BADGE}}catch(e){}
 const CATS=["חזה","גב","כתפיים","ידיים","רגליים","בטן","אירובי","אחר"];
 const $app=document.getElementById("app");
 const LS=localStorage;
@@ -216,8 +230,7 @@ function showMachines(){
   let h=`<button class="back" id="bk">→ חזרה</button><h1>המכשירים שלי</h1>
   <input type="text" id="nn" placeholder="שם מכשיר חדש"><button class="btn" id="add">הוסף מכשיר</button>`;
   machines.forEach((m,i)=>{
-    h+=`<div class="row" data-id="${m.id}">${thumb(m)}<div class="nm" style="touch-action:auto">${esc(m.name)}<div class="meta">${m.sets} סטים · ${fw(m.weight)} ק״ג</div>${m.category?`<span class="cat">${esc(m.category)}</span>`:""}</div>
-    <div class="mv"><button data-up="${i}" aria-label="העלה מכשיר">▲</button><button data-dn="${i}" aria-label="הורד מכשיר">▼</button></div></div>`;
+    h+=`<div class="row" data-id="${m.id}">${thumb(m)}<div class="nm" style="touch-action:auto">${esc(m.name)}<div class="meta">${m.sets} סטים · ${fw(m.weight)} ק״ג</div>${m.category?`<span class="cat">${esc(m.category)}</span>`:""}</div></div>`;
   });
   $app.innerHTML=h;
   document.getElementById("bk").onclick=()=>go("home");
@@ -225,9 +238,56 @@ function showMachines(){
     const v=document.getElementById("nn").value.trim();if(!v)return toast("כתוב שם למכשיר");
     const m={id:uid(),name:v,sets:3,weight:10,category:""};machines.push(m);saveMachines();go("edit/"+m.id);
   };
-  $app.querySelectorAll(".row").forEach(r=>r.onclick=e=>{if(e.target.closest(".mv"))return;go("edit/"+r.dataset.id)});
-  $app.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>move(+b.dataset.up,-1));
-  $app.querySelectorAll("[data-dn]").forEach(b=>b.onclick=()=>move(+b.dataset.dn,1));
+  $app.querySelectorAll(".row").forEach(r=>r.onclick=e=>{go("edit/"+r.dataset.id)});
+  enableDrag();
+}
+function enableDrag(){
+  const rows=[...$app.querySelectorAll(".row")];
+  if(rows.length<2){return}
+  const hint=document.createElement("div");hint.className="hint";hint.textContent="לחיצה ארוכה על מכשיר ואז גרירה משנה את הסדר.";$app.appendChild(hint);
+  let timer=null,drag=null,sx=0,sy=0,suppress=false;
+  const buzz=n=>{try{navigator.vibrate&&navigator.vibrate(n)}catch(e){}};
+  rows.forEach(r=>{r.style.touchAction="pan-y";r.style.userSelect="none";r.style.webkitUserSelect="none";r.style.webkitTouchCallout="none";r.oncontextmenu=e=>e.preventDefault()});
+  const start=(r,y)=>{
+    const rects=rows.map(x=>x.getBoundingClientRect());const from=rows.indexOf(r);
+    drag={r,from,to:from,startY:y,rects,h:rects[from].height+parseFloat(getComputedStyle(r).marginBottom||0)+10,scroll0:window.scrollY};
+    r.classList.add("lift");r.style.zIndex=5;r.style.position="relative";r.style.transition="none";
+    rows.forEach(x=>{if(x!==r)x.style.transition="transform .15s"});
+    buzz(25);suppress=true;
+  };
+  const move=y=>{
+    if(!drag)return;
+    if(y<60)window.scrollBy(0,-12);else if(y>innerHeight-60)window.scrollBy(0,12);
+    const dy=y-drag.startY+(window.scrollY-drag.scroll0);
+    drag.r.style.transform=`translateY(${dy}px) scale(1.03)`;
+    const c=drag.rects[drag.from].top+drag.rects[drag.from].height/2+dy-0;
+    let to=drag.from;
+    drag.rects.forEach((q,i)=>{const mid=q.top+q.height/2;if(i<drag.from&&c<mid)to=Math.min(to,i);if(i>drag.from&&c>mid)to=Math.max(to,i)});
+    if(to!==drag.to){drag.to=to;buzz(10)}
+    rows.forEach((x,i)=>{if(x===drag.r)return;let sh=0;
+      if(drag.from<drag.to&&i>drag.from&&i<=drag.to)sh=-drag.h;
+      if(drag.from>drag.to&&i<drag.from&&i>=drag.to)sh=drag.h;
+      x.style.transform=sh?`translateY(${sh}px)`:""});
+  };
+  const end=()=>{
+    clearTimeout(timer);timer=null;
+    if(!drag){return}
+    const d=drag;drag=null;
+    if(d.to!==d.from){const [m]=machines.splice(d.from,1);machines.splice(d.to,0,m);saveMachines();buzz(15)}
+    setTimeout(()=>{suppress=false},350);showMachines();
+  };
+  rows.forEach(r=>{
+    r.addEventListener("touchstart",e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;clearTimeout(timer);timer=setTimeout(()=>start(r,sy),380)},{passive:true});
+    r.addEventListener("touchmove",e=>{const t=e.touches[0];
+      if(drag){e.preventDefault();move(t.clientY);return}
+      if(Math.abs(t.clientX-sx)>8||Math.abs(t.clientY-sy)>8){clearTimeout(timer);timer=null}
+    },{passive:false});
+    r.addEventListener("touchend",end);r.addEventListener("touchcancel",end);
+    r.addEventListener("mousedown",e=>{if(e.button)return;sx=e.clientX;sy=e.clientY;clearTimeout(timer);timer=setTimeout(()=>start(r,sy),380)});
+  });
+  window.onmousemove=e=>{if(drag)move(e.clientY);else if(timer&&(Math.abs(e.clientX-sx)>8||Math.abs(e.clientY-sy)>8)){clearTimeout(timer);timer=null}};
+  window.onmouseup=end;
+  $app.addEventListener("click",e=>{if(suppress){e.stopPropagation();e.preventDefault()}},true);
 }
 function move(i,d){const j=i+d;if(j<0||j>=machines.length)return;[machines[i],machines[j]]=[machines[j],machines[i]];saveMachines();showMachines()}
 
@@ -424,20 +484,15 @@ function photoFile(m){
   const b=atob(p.split(",")[1]),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);
   return new File([a],"machine.jpg",{type:"image/jpeg"});
 }
-function lensPost(f){
-  const dt=new DataTransfer();dt.items.add(f);
-  const fm=document.createElement("form");fm.method="POST";fm.enctype="multipart/form-data";fm.target="_blank";
-  fm.action="https://lens.google.com/v3/upload?hl=iw&re=df&st="+Date.now()+"&ep=gisbubb";
-  const i=document.createElement("input");i.type="file";i.name="encoded_image";i.files=dt.files;fm.appendChild(i);
-  fm.style.display="none";document.body.appendChild(fm);fm.submit();setTimeout(()=>fm.remove(),3000);
-}
 function lensSearch(m){
   const f=photoFile(m);if(!f)return toast("קודם מוסיפים תמונה");
   const canShare=navigator.canShare&&navigator.canShare({files:[f]});
-  const btns=[{text:"פתיחה ב-Google Lens",fn:()=>{try{lensPost(f)}catch(e){window.open("https://lens.google.com/","_blank");toast("בחר את התמונה ידנית ב-Lens")}}}];
-  if(canShare)btns.push({text:"שיתוף התמונה (אפליקציית Google)",fn:()=>{navigator.share({files:[f],title:"מכשיר כושר"}).catch(()=>{})}});
+  const btns=[];
+  if(canShare)btns.push({text:"שיתוף התמונה ל-Google / Lens",fn:()=>{navigator.share({files:[f],title:"מכשיר כושר"}).catch(()=>{})}});
+  btns.push({text:"פתיחת Google Lens",fn:()=>window.open("https://lens.google.com/","_blank")});
+  btns.push({text:"שמירת התמונה בטלפון",fn:()=>{const a=document.createElement("a");a.href=URL.createObjectURL(f);a.download="machine.jpg";document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);toast("התמונה נשמרה בהורדות")}});
   btns.push({text:"סגור"});
-  modal("זיהוי עם חיפוש Google","<pre>התמונה תישלח ל-Google Lens בלשונית חדשה ובלי מפתח. ב-Lens תראה את שם המכשיר בתוצאות. אחר כך חוזרים לאפליקציה וכותבים את השם בשדה \"שם\" למעלה. הדף לא קורא את התוצאה אוטומטית. אין לשלוח תמונות עם אנשים.\nאם Lens לא נפתח עם התמונה, בחר שיתוף ואז Google/Lens, או שמור את התמונה ופתח lens.google.com.</pre>",btns);
+  modal("זיהוי עם חיפוש Google","<pre>אתר לא יכול לשלוח תמונה ל-Google לבד (Google חוסמת את זה). שלוש דרכים:\n1. שיתוף: בוחרים Google או Lens ברשימת השיתוף.\n2. שמירת התמונה בטלפון, ואז פתיחת Google Lens ובחירת התמונה.\n3. פתיחת Lens וצילום המכשיר מחדש.\nמחפשים את שם המכשיר בתוצאות, חוזרים לאפליקציה וכותבים אותו בשדה השם. אין לשלוח תמונות עם אנשים.</pre>",btns);
 }
 function summary(){
   let t="ענה בעברית. תן משוב כללי קצר וזהיר על איזון קבוצות השרירים, גיוון ומעקב התקדמות. אל תניח גיל, מצב רפואי, ניסיון או מטרות שלא נמסרו. אל תמציא חזרות או עצימות ואל תיתן אבחנה רפואית. שאל לפני המלצה להעלות משקל. משקל במכשיר סיוע עשוי להיות סיוע ולא התנגדות.\n\nהמכשירים שלי:\n";
@@ -473,6 +528,7 @@ function showSettings(){
   <button class="btn" id="sg">שמירת Gemini</button>
   <button class="btn warm" id="ao">פתיחת Google AI Studio</button>
   ${settings.gemKey?`<button class="btn danger" id="dg">מחיקת מפתח</button>`:""}
+  <div class="sync"><img src="${BADGE}&query_only=true" alt="" style="height:20px" onerror="this.style.display='none'"><br>מספר הדפדפנים שנכנסו לאפליקציה (כל דפדפן נספר פעם אחת)</div>
   <div class="sync">${VERSION}</div>`;
   const q=s=>document.getElementById(s);
   q("bk").onclick=()=>go("home");
