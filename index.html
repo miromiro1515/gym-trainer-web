@@ -66,7 +66,7 @@ input[type=text],input[type=password],select,textarea{width:100%;font-size:17px;
 <div id="app"><h1>אימון חדר כושר: תוכנית אימונים</h1><p>אפליקציה חינמית לרישום אימונים וניהול תוכנית אימונים בחדר כושר. מוסיפים מכשירים עם תמונה, קובעים סטים ומשקלים, מסמנים תרגילים שבוצעו ועוקבים אחרי יומן האימונים והגרף השבועי.</p><noscript><p>האפליקציה דורשת הפעלת JavaScript.</p></noscript></div>
 <script>
 "use strict";
-const VERSION="web 1.4";
+const VERSION="web 1.5";
 const BADGE="https://visitor-badge.laobi.icu/badge?page_id=miromiro1515.gym-trainer-web&left_text=%D7%91%D7%99%D7%A7%D7%95%D7%A8%D7%99%D7%9D";
 // visit counter: one count per browser, no personal data, refresh does not count again
 try{if(!localStorage.getItem("gym.counted")){const c=new Image();c.onload=()=>{try{localStorage.setItem("gym.counted","1")}catch(e){}};c.src=BADGE}}catch(e){}
@@ -82,7 +82,7 @@ const fw=w=>Number.isInteger(w)?String(w):String(w);
 let machines=J("gym.machines",null);
 let log=J("gym.log",[]);
 let workout=J("gym.workout",{active:false,done:{},snap:{}});
-let settings=J("gym.settings",{});
+let settings=J("gym.settings",{});if(settings.gemKey||settings.gemModel){delete settings.gemKey;delete settings.gemModel;try{localStorage.setItem("gym.settings",JSON.stringify(settings))}catch(e){}}
 let seed=[];           // [{id,name,category,image}]
 let syncState="";      // status text
 let sel=null;          // selected machine id in workout
@@ -209,7 +209,7 @@ function showHome(){
   if(act)h+=`<button class="btn resume" id="resume">↩ חזרה לאימון הפעיל · ${doneCount()} מתוך ${machines.length} הושלמו</button>`;
   h+=`<div class="tile" id="new"><div class="ic">💪</div><div class="t">אימון חדש</div><div class="s">(${machines.length} מכשירים)</div></div>
   <button class="btn" id="b1">ניהול מכשירים</button><button class="btn" id="b2">יומן אימונים</button>
-  <button class="btn" id="b3">תובנה על האימון</button><button class="btn" id="b4">הגדרות וסנכרון</button>${sync()}
+  <button class="btn" id="b4">הגדרות וסנכרון</button>${sync()}
   <div class="sync">${VERSION}</div>`;
   $app.innerHTML=h;
   if(act)document.getElementById("resume").onclick=()=>go("workout");
@@ -220,7 +220,6 @@ function showHome(){
   };
   document.getElementById("b1").onclick=()=>go("machines");
   document.getElementById("b2").onclick=()=>go("log");
-  document.getElementById("b3").onclick=insight;
   document.getElementById("b4").onclick=()=>go("settings");
 }
 
@@ -335,8 +334,6 @@ function showEdit(id){
   <input type="file" id="file" accept="image/*" hidden><input type="file" id="cam" accept="image/*" capture="environment" hidden>
   <button class="btn" id="pc">${p?"החלפת תמונה":"הוספת תמונה"} · צילום</button>
   <button class="btn" id="pg">בחירה מהגלריה</button>
-  <button class="btn" id="lens">זיהוי עם חיפוש תמונה של Google (ללא מפתח)</button>
-  <button class="btn" id="ai">זיהוי אוטומטי עם Gemini (אופציונלי, דורש מפתח)</button>
   ${p?`<button class="btn warm" id="rp">הסרת תמונה</button>`:""}
   <button class="btn" id="dn">סיום עריכה</button><button class="btn danger" id="del">מחיקת מכשיר</button>
   <div class="hint">התמונות נשמרות רק במכשיר הזה ואינן עולות ל-GitHub.</div>`;
@@ -349,8 +346,6 @@ function showEdit(id){
   [q("cam"),q("file")].forEach(inp=>inp.onchange=async()=>{const f=inp.files[0];if(!f)return;toast("שומר תמונה…");
     try{setPhoto(m.id,await shrink(f,800));render()}catch(e){toast("לא ניתן לקרוא את התמונה")}});
   if(q("rp"))q("rp").onclick=()=>{setPhoto(m.id,"");render()};
-  q("ai").onclick=()=>identify(m);
-  q("lens").onclick=()=>lensSearch(m);
   q("del").onclick=()=>confirmDlg("למחוק את המכשיר?","המכשיר והתמונה יימחקו. האימונים שביומן יישמרו.","מחיקה",()=>{
     machines=machines.filter(x=>x.id!==m.id);setPhoto(m.id,"");delete workout.done[m.id];saveWorkout();saveMachines();go("machines")});
 }
@@ -422,8 +417,8 @@ function finishWorkout(){
   workout={active:false,done:{},snap:{}};saveWorkout();
   history.replaceState(null,"","#home");
   $app.innerHTML=`<h1>כל הכבוד! האימון הושלם</h1><p>זהו אימון מספר ${log.length} שלך. בוצעו ${n} מתוך ${total} מכשירים.</p>
-  <button class="btn" id="i">תובנה על האימון</button><button class="btn" id="h">חזרה למסך הראשי</button>`;
-  document.getElementById("i").onclick=insight;document.getElementById("h").onclick=()=>go("home");
+  <button class="btn" id="h">חזרה למסך הראשי</button>`;
+  document.getElementById("h").onclick=()=>go("home");
 }
 
 function showLog(){
@@ -447,66 +442,6 @@ function showLog(){
     confirmDlg("למחוק את האימון?","האימון יימחק מהיומן. אי אפשר לשחזר אותו.","מחיקה",()=>{log.splice(i,1);saveLog();showLog()})});
 }
 
-// ---------- Gemini ----------
-async function gemini(parts,config){
-  const key=settings.gemKey;
-  if(!key){modal("נדרש מפתח Gemini אישי","<pre>כדי להשתמש בזיהוי ובתובנות צריך מפתח אישי מ-Google AI Studio. אין מפתח משותף.</pre>",[{text:"הגדרות",fn:()=>go("settings")},{text:"סגור"}]);return null}
-  const model=settings.gemModel||"gemini-3.5-flash-lite";
-  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:"POST",
-    headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify({contents:[{role:"user",parts}],generationConfig:config})});
-  if(!r.ok){toast(({400:"Google דחה את הבקשה, בדוק את המפתח",401:"המפתח לא תקף",403:"המפתח לא תקף",404:"המודל אינו זמין, אפשר לשנות בהגדרות",429:"מכסת הבקשות של Google מוצתה"})[r.status]||"שגיאה "+r.status);return null}
-  const j=await r.json();
-  const p=j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts;
-  if(!p){toast("לא התקבלה תשובה");return null}
-  return p.map(x=>x.text||"").filter(Boolean).join("\n").trim();
-}
-async function smallB64(m){
-  const p=getPhoto(m);if(!p)return null;
-  const blob=await (await fetch(p)).blob();return (await shrink(blob,768)).split(",")[1];
-}
-function identify(m){
-  if(!getPhoto(m))return toast("קודם מוסיפים תמונה");
-  modal("זיהוי מכשיר עם Gemini","<pre>התמונה תישלח ל-Google לזיהוי המכשיר. בשירות החינמי Google עשויה להשתמש בקלט ובתשובות לשיפור המוצרים. אין לשלוח תמונות עם אנשים או מידע אישי.</pre>",[
-    {text:"שליחה וזיהוי",fn:async()=>{
-      toast("מזהה את המכשיר…");
-      try{
-        const prompt='Identify the gym machine shown in the photo. If the machine has a name placard, sticker or instruction label, read it and prefer that exact name. Otherwise use the specific standard name of the machine, not a generic description. Reply with valid JSON only, no markdown and no explanation, in exactly this structure: {"name_en":"...","name_he":"...","category":"...","confidence":0.0}. name_en: the English name of the machine, for example "Leg Press". name_he: a short Hebrew translation, for example "פשיטת ברכיים". category: exactly one of '+CATS.join(", ")+'. confidence: a number from 0 to 1.';
-        const t=await gemini([{text:prompt},{inlineData:{mimeType:"image/jpeg",data:await smallB64(m)}}],{maxOutputTokens:800,responseMimeType:"application/json"});
-        if(!t)return;
-        let o;try{o=JSON.parse(t.replace(/^```json|^```|```$/g,"").trim())}catch(e){return toast("התשובה לא הייתה קריאה")}
-        const cat=CATS.includes(o.category)?o.category:"אחר",he=(o.name_he||o.name_en||"").trim();
-        modal("זוהה מכשיר",`<pre>${esc(he)} (${esc(o.name_en||"")})\nקבוצה: ${esc(cat)}\nביטחון: ${o.confidence>=.75?"גבוהה":o.confidence>=.45?"בינונית":"נמוכה"}</pre>`,[
-          {text:"שמירה",fn:()=>{m.name=he;m.category=cat;saveMachines();render()}},{text:"ביטול"}]);
-      }catch(e){toast("לא ניתן להתחבר ל-Google")}}},{text:"ביטול"}]);
-}
-function photoFile(m){
-  const p=getPhoto(m);if(!p)return null;
-  const b=atob(p.split(",")[1]),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);
-  return new File([a],"machine.jpg",{type:"image/jpeg"});
-}
-function lensSearch(m){
-  const f=photoFile(m);if(!f)return toast("קודם מוסיפים תמונה");
-  const canShare=navigator.canShare&&navigator.canShare({files:[f]});
-  const btns=[];
-  if(canShare)btns.push({text:"שיתוף התמונה ל-Google / Lens",fn:()=>{navigator.share({files:[f],title:"מכשיר כושר"}).catch(()=>{})}});
-  btns.push({text:"פתיחת Google Lens",fn:()=>window.open("https://lens.google.com/","_blank")});
-  btns.push({text:"שמירת התמונה בטלפון",fn:()=>{const a=document.createElement("a");a.href=URL.createObjectURL(f);a.download="machine.jpg";document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);toast("התמונה נשמרה בהורדות")}});
-  btns.push({text:"סגור"});
-  modal("זיהוי עם חיפוש Google","<pre>אתר לא יכול לשלוח תמונה ל-Google לבד (Google חוסמת את זה). שלוש דרכים:\n1. שיתוף: בוחרים Google או Lens ברשימת השיתוף.\n2. שמירת התמונה בטלפון, ואז פתיחת Google Lens ובחירת התמונה.\n3. פתיחת Lens וצילום המכשיר מחדש.\nמחפשים את שם המכשיר בתוצאות, חוזרים לאפליקציה וכותבים אותו בשדה השם. אין לשלוח תמונות עם אנשים.</pre>",btns);
-}
-function summary(){
-  let t="ענה בעברית. תן משוב כללי קצר וזהיר על איזון קבוצות השרירים, גיוון ומעקב התקדמות. אל תניח גיל, מצב רפואי, ניסיון או מטרות שלא נמסרו. אל תמציא חזרות או עצימות ואל תיתן אבחנה רפואית. שאל לפני המלצה להעלות משקל. משקל במכשיר סיוע עשוי להיות סיוע ולא התנגדות.\n\nהמכשירים שלי:\n";
-  machines.forEach(m=>t+=`${m.name}: ${m.sets} סטים, ${fw(m.weight)} ק״ג\n`);
-  log.slice(-3).forEach(e=>{t+=`\nאימון שהושלם ${new Date(e.ts).toLocaleString("he-IL")}:\n`;e.machines.forEach(m=>t+=`${m.name}: ${m.sets} סטים, ${fw(m.weight)} ק״ג\n`)});
-  return t;
-}
-function insight(){
-  if(!settings.gemKey)return gemini([],{});
-  modal("שליחת סיכום ל-Gemini",`<pre>בלחיצה על שליחה, שמות המכשירים, הסטים, המשקלים ועד שלושה אימונים אחרונים יישלחו ל-Google. בשירות החינמי Google עשויה להשתמש בקלט ובתשובות לשיפור המוצרים. אין לשלוח מידע אישי או רגיש.</pre>`,[
-    {text:"שליחה וקבלת תובנה",fn:async()=>{toast("מקבל תובנה…");try{const t=await gemini([{text:summary()}],{maxOutputTokens:1200});
-      if(t)modal("תובנה על האימון",`<pre>${esc(t)}</pre>`,[{text:"סגור"}])}catch(e){toast("לא ניתן להתחבר ל-Google")}}},{text:"ביטול"}]);
-}
-
 // ---------- settings ----------
 function showSettings(){
   $app.innerHTML=`<button class="back" id="bk">→ חזרה</button><h1>הגדרות וסנכרון</h1>
@@ -521,13 +456,6 @@ function showSettings(){
   ${sync()}
   <h3 style="margin-top:26px">גיבוי ידני (בלי GitHub)</h3><div class="hint">אפשר לשלוח את קובץ התוכנית לעצמך בוואטסאפ, ולייבא אותו במכשיר אחר. לא צריך חשבון GitHub.</div>
   <button class="btn" id="shr">שיתוף הגיבוי (וואטסאפ ועוד)</button><button class="btn" id="exp">שמירת קובץ גיבוי במכשיר</button><button class="btn" id="imp">ייבוא מקובץ</button><input type="file" id="impf" accept=".json,application/json" hidden>
-  <h3 style="margin-top:26px">Gemini</h3>
-  <div class="hint">לכל משתמש מפתח אישי מ-Google AI Studio (חשבון ללא חיוב נשאר במכסה החינמית). המפתח נשמר בדפדפן הזה בלבד ולא עולה ל-GitHub. לשימוש בני 18 ומעלה.</div>
-  <input type="password" id="gk" placeholder="${settings.gemKey?"מפתח שמור (הדבק חדש כדי להחליף)":"הדבק מפתח Gemini API"}" dir="ltr" autocomplete="off">
-  <input type="text" id="gm" value="${esc(settings.gemModel||"gemini-3.5-flash-lite")}" dir="ltr">
-  <button class="btn" id="sg">שמירת Gemini</button>
-  <button class="btn warm" id="ao">פתיחת Google AI Studio</button>
-  ${settings.gemKey?`<button class="btn danger" id="dg">מחיקת מפתח</button>`:""}
   <div class="sync"><img src="${BADGE}&query_only=true" alt="" style="height:20px" onerror="this.style.display='none'"><br>מספר הדפדפנים שנכנסו לאפליקציה (כל דפדפן נספר פעם אחת)</div>
   <div class="sync">${VERSION}</div>`;
   const q=s=>document.getElementById(s);
@@ -553,9 +481,6 @@ function showSettings(){
     confirmDlg("לייבא את הקובץ?","המכשירים הנוכחיים יוחלפו בקובץ. אימונים מהקובץ יתווספו ליומן.","ייבוא",()=>{
       machines=o.machines;const seen=new Set(log.map(e=>e.ts));(o.log||[]).forEach(e=>{if(!seen.has(e.ts))log.push(e)});log.sort((a,b)=>a.ts-b.ts);
       S("gym.machines",machines);S("gym.log",log);touch();toast("יובא");go("home")})}catch(e){toast("הקובץ לא תקין")}};
-  q("sg").onclick=()=>{if(q("gk").value.trim())settings.gemKey=q("gk").value.trim();settings.gemModel=q("gm").value.trim()||"gemini-3.5-flash-lite";saveSettings();toast("נשמר");showSettings()};
-  q("ao").onclick=()=>window.open("https://aistudio.google.com/apikey","_blank");
-  if(q("dg"))q("dg").onclick=()=>{delete settings.gemKey;saveSettings();showSettings()};
 }
 
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
