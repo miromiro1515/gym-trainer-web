@@ -50,7 +50,7 @@ input[type=text],input[type=password],select,textarea{width:100%;font-size:17px;
 <div id="app"></div>
 <script>
 "use strict";
-const VERSION="web 1.0";
+const VERSION="web 1.1";
 const CATS=["חזה","גב","כתפיים","ידיים","רגליים","בטן","אירובי","אחר"];
 const $app=document.getElementById("app");
 const LS=localStorage;
@@ -95,6 +95,7 @@ async function loadSeed(){
   try{const r=await fetch("seed.json",{cache:"no-cache"});seed=(await r.json()).map((x,i)=>({id:"m"+(i+1),...x}))}catch(e){seed=[]}
   if(machines===null){
     machines=seed.map(s=>({id:s.id,name:s.name,sets:3,weight:10,category:s.category||""}));
+    machines.push({id:"m9",name:"כיפוף בכיסא רומי",sets:3,weight:0,category:""});
     S("gym.machines",machines);
   }
 }
