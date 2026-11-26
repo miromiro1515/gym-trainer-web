@@ -75,7 +75,7 @@ h1.c{text-align:center}
 <div id="app"><h1>אימון חדר כושר: תוכנית אימונים</h1><p>אפליקציה חינמית לרישום אימונים וניהול תוכנית אימונים בחדר כושר. מוסיפים מכשירים עם תמונה, קובעים סטים ומשקלים, מסמנים תרגילים שבוצעו ועוקבים אחרי יומן האימונים והגרף השבועי.</p><noscript><p>האפליקציה דורשת הפעלת JavaScript.</p></noscript></div>
 <script>
 "use strict";
-const VERSION="web 1.6";
+const VERSION="web 1.7";
 const BADGE="https://visitor-badge.laobi.icu/badge?page_id=miromiro1515.gym-trainer-web&left_text=%D7%91%D7%99%D7%A7%D7%95%D7%A8%D7%99%D7%9D";
 // visit counter: one count per browser, no personal data, refresh does not count again
 try{if(!localStorage.getItem("gym.counted")){const c=new Image();c.onload=()=>{try{localStorage.setItem("gym.counted","1")}catch(e){}};c.src=BADGE}}catch(e){}
@@ -236,7 +236,8 @@ function thumb(m){const p=getPhoto(m);return p?`<img src="${p}" alt="">`:`<div c
 
 function showMachines(){
   let h=`<button class="back" id="bk">→ חזרה</button><h1>המכשירים שלי</h1>
-  <input type="text" id="nn" placeholder="שם מכשיר חדש"><button class="btn" id="add">הוסף מכשיר</button>`;
+  <input type="text" id="nn" placeholder="שם מכשיר חדש"><button class="btn" id="add">הוסף מכשיר</button>
+  <button class="btn" id="bgall">הסרת רקע מכל התמונות</button>${machines.some(m=>LS.getItem("gym.photoOrig."+m.id))?`<button class="btn warm" id="bgundo">שחזור כל התמונות המקוריות</button>`:""}`;
   machines.forEach((m,i)=>{
     h+=`<div class="row" data-id="${m.id}">${thumb(m)}<div class="nm" style="touch-action:auto">${esc(m.name)}<div class="meta">${m.sets} סטים · ${fw(m.weight)} ק״ג</div>${m.category?`<span class="cat">${esc(m.category)}</span>`:""}</div></div>`;
   });
@@ -247,6 +248,8 @@ function showMachines(){
     const m={id:uid(),name:v,sets:3,weight:10,category:""};machines.push(m);saveMachines();go("edit/"+m.id);
   };
   $app.querySelectorAll(".row").forEach(r=>r.onclick=e=>{go("edit/"+r.dataset.id)});
+  document.getElementById("bgall").onclick=bulkBg;
+  if(document.getElementById("bgundo"))document.getElementById("bgundo").onclick=restoreAllBg;
   enableDrag();
 }
 function enableDrag(){
@@ -343,7 +346,7 @@ function showEdit(id){
   <input type="file" id="file" accept="image/*" hidden><input type="file" id="cam" accept="image/*" capture="environment" hidden>
   <button class="btn" id="pc">${p?"החלפת תמונה":"הוספת תמונה"} · צילום</button>
   <button class="btn" id="pg">בחירה מהגלריה</button>
-  <label class="sw"><input type="checkbox" id="abg" ${settings.autoBg!==false?"checked":""}>הסרת רקע אוטומטית כשמוסיפים תמונה</label>
+  <label class="sw"><input type="checkbox" id="abg" ${settings.autoBg===true?"checked":""}>הסרת רקע אוטומטית כשמוסיפים תמונה (טוען קבצים כבדים)</label>
   <label class="sw"><input type="checkbox" id="ko" ${settings.keepOrig!==false?"checked":""}>לשמור גם את התמונה המקורית</label>
   ${p?`<button class="btn" id="bgb">הסרת רקע מהתמונה</button>`:""}
   ${LS.getItem("gym.photoOrig."+m.id)?`<button class="btn warm" id="rso">חזרה לתמונה המקורית</button>`:""}
@@ -357,8 +360,8 @@ function showEdit(id){
   q("cat").onchange=()=>{m.category=q("cat").value;saveMachines()};
   q("pc").onclick=()=>q("cam").click();q("pg").onclick=()=>q("file").click();
   [q("cam"),q("file")].forEach(inp=>inp.onchange=async()=>{const f=inp.files[0];if(!f)return;toast("שומר תמונה…");
-    try{const d=await shrink(f,800);setPhoto(m.id,d);inp.value="";
-      if(settings.autoBg!==false)await removeBg(m,d);else render()}catch(e){toast("לא ניתן לקרוא את התמונה")}});
+    try{const d=await shrink(f,800);setPhoto(m.id,d);LS.removeItem("gym.photoOrig."+m.id);inp.value="";
+      if(settings.autoBg===true)await removeBg(m,d);else render()}catch(e){toast("לא ניתן לקרוא את התמונה")}});
   q("abg").onchange=()=>{settings.autoBg=q("abg").checked;saveSettings()};
   q("ko").onchange=()=>{settings.keepOrig=q("ko").checked;saveSettings()};
   if(q("bgb"))q("bgb").onclick=()=>removeBg(m,getPhoto(m));
@@ -368,19 +371,44 @@ function showEdit(id){
     machines=machines.filter(x=>x.id!==m.id);setPhoto(m.id,"");delete workout.done[m.id];saveWorkout();saveMachines();go("machines")});
 }
 const BGLIB="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm";
+let bgLib=null;
+async function bgCore(dataUrl,prog){
+  if(!bgLib)bgLib=await import(BGLIB);
+  const blob=await (await fetch(dataUrl)).blob();
+  const out=await bgLib.removeBackground(blob,{model:"isnet_quint8",output:{format:"image/png"},progress:(k,c,t)=>prog&&prog(String(k).startsWith("fetch"),t?Math.round(c/t*100):0)});
+  const im=await createImageBitmap(out),cv=document.createElement("canvas");cv.width=im.width;cv.height=im.height;
+  const cx=cv.getContext("2d");cx.fillStyle="#f2ede3";cx.fillRect(0,0,cv.width,cv.height);cx.drawImage(im,0,0);
+  return cv.toDataURL("image/jpeg",.72);
+}
+function bulkBg(){
+  const todo=machines.filter(m=>getPhoto(m)&&!LS.getItem("gym.photoOrig."+m.id));
+  if(!todo.length)return toast("אין תמונות להסרת רקע");
+  modal("הסרת רקע מכל התמונות",`<pre>${todo.length} תמונות יעובדו, אחת אחרי השנייה. בפעם הראשונה יורדים כ-56MB (עדיף Wi-Fi), ואז כל תמונה לוקחת כמה שניות. ${settings.keepOrig!==false?"המקור של כל תמונה נשמר ואפשר לחזור אליו.":"המקור לא יישמר."} איכות החיתוך משתנה.</pre>`,[
+    {text:"להתחיל",fn:async()=>{
+      LS.setItem("gym.bgok","1");
+      const ov=document.createElement("div");ov.className="modal";ov.innerHTML="<div class='box'><h3>מסיר רקע</h3><pre id='bgst'>טוען…</pre><div class='bar'><i id='bgbar' style='width:3%'></i></div></div>";document.body.appendChild(ov);
+      const st=t=>{const e=document.getElementById("bgst");if(e)e.textContent=t},bar=p=>{const e=document.getElementById("bgbar");if(e)e.style.width=Math.max(3,Math.min(100,p))+"%"};
+      let ok=0,fail=0;
+      for(let i=0;i<todo.length;i++){
+        const m=todo[i];st(`תמונה ${i+1} מתוך ${todo.length}`);bar(100*i/todo.length);
+        try{const src=getPhoto(m);const r=await bgCore(src,(f,p)=>{if(f)st(`מוריד מודל… ${p}%`);else st(`תמונה ${i+1} מתוך ${todo.length}`)});
+          if(settings.keepOrig!==false){try{LS.setItem("gym.photoOrig."+m.id,src)}catch(e){}}
+          setPhoto(m.id,r);ok++}catch(e){fail++;if(i===0&&fail===1&&!bgLib)break}
+      }
+      ov.remove();toast(`הסתיים: ${ok} תמונות${fail?`, ${fail} נכשלו`:""}`);showMachines();
+    }},{text:"ביטול"}]);
+}
+function restoreAllBg(){
+  let n=0;machines.forEach(m=>{const o=LS.getItem("gym.photoOrig."+m.id);if(o){LS.setItem("gym.photo."+m.id,o);LS.removeItem("gym.photoOrig."+m.id);n++}});
+  toast(n?`שוחזרו ${n} תמונות מקוריות`:"אין מה לשחזר");showMachines();
+}
 function removeBg(m,dataUrl){return new Promise(res=>{
   const go2=async()=>{
     const ov=document.createElement("div");ov.className="modal";ov.innerHTML="<div class='box'><h3>מסיר רקע</h3><pre id='bgst'>טוען…</pre><div class='bar'><i id='bgbar' style='width:3%'></i></div><div class='hint'>הטעינה הראשונה כבדה (כ-56MB), אחר כך זה נשמר בדפדפן.</div></div>";
     document.body.appendChild(ov);
     const st=t=>{const e=document.getElementById("bgst");if(e)e.textContent=t},bar=p=>{const e=document.getElementById("bgbar");if(e)e.style.width=Math.max(3,Math.min(100,p))+"%"};
     try{
-      const lib=await import(BGLIB);
-      const blob=await (await fetch(dataUrl)).blob();
-      const out=await lib.removeBackground(blob,{model:"isnet_quint8",output:{format:"image/png"},progress:(k,c,t)=>{
-        if(String(k).startsWith("fetch")){const p=t?Math.round(c/t*100):0;st("מוריד את המודל… "+p+"%");bar(p*.7)}else{st("מעבד את התמונה…");bar(85)}}});
-      const im=await createImageBitmap(out),cv=document.createElement("canvas");cv.width=im.width;cv.height=im.height;
-      const cx=cv.getContext("2d");cx.fillStyle="#f2ede3";cx.fillRect(0,0,cv.width,cv.height);cx.drawImage(im,0,0);
-      const r=cv.toDataURL("image/jpeg",.72);
+      const r=await bgCore(dataUrl,(f,p)=>{if(f){st("מוריד את המודל… "+p+"%");bar(p*.7)}else{st("מעבד את התמונה…");bar(85)}});
       if(settings.keepOrig!==false){try{LS.setItem("gym.photoOrig."+m.id,dataUrl)}catch(e){toast("אין מקום לשמור את המקור")}}
       setPhoto(m.id,r);ov.remove();toast("הרקע הווסר");res(true);render();
     }catch(e){ov.remove();toast("הסרת הרקע נכשלה, נשארה התמונה המקורית");res(false);render()}
