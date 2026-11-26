@@ -275,7 +275,8 @@ function showEdit(id){
   <input type="file" id="file" accept="image/*" hidden><input type="file" id="cam" accept="image/*" capture="environment" hidden>
   <button class="btn" id="pc">${p?"החלפת תמונה":"הוספת תמונה"} · צילום</button>
   <button class="btn" id="pg">בחירה מהגלריה</button>
-  <button class="btn" id="ai">זיהוי אוטומטי עם Gemini</button>
+  <button class="btn" id="lens">זיהוי עם חיפוש תמונה של Google (ללא מפתח)</button>
+  <button class="btn" id="ai">זיהוי אוטומטי עם Gemini (אופציונלי, דורש מפתח)</button>
   ${p?`<button class="btn warm" id="rp">הסרת תמונה</button>`:""}
   <button class="btn" id="dn">סיום עריכה</button><button class="btn danger" id="del">מחיקת מכשיר</button>
   <div class="hint">התמונות נשמרות רק במכשיר הזה ואינן עולות ל-GitHub.</div>`;
@@ -289,6 +290,7 @@ function showEdit(id){
     try{setPhoto(m.id,await shrink(f,800));render()}catch(e){toast("לא ניתן לקרוא את התמונה")}});
   if(q("rp"))q("rp").onclick=()=>{setPhoto(m.id,"");render()};
   q("ai").onclick=()=>identify(m);
+  q("lens").onclick=()=>lensSearch(m);
   q("del").onclick=()=>confirmDlg("למחוק את המכשיר?","המכשיר והתמונה יימחקו. האימונים שביומן יישמרו.","מחיקה",()=>{
     machines=machines.filter(x=>x.id!==m.id);setPhoto(m.id,"");delete workout.done[m.id];saveWorkout();saveMachines();go("machines")});
 }
@@ -416,6 +418,26 @@ function identify(m){
         modal("זוהה מכשיר",`<pre>${esc(he)} (${esc(o.name_en||"")})\nקבוצה: ${esc(cat)}\nביטחון: ${o.confidence>=.75?"גבוהה":o.confidence>=.45?"בינונית":"נמוכה"}</pre>`,[
           {text:"שמירה",fn:()=>{m.name=he;m.category=cat;saveMachines();render()}},{text:"ביטול"}]);
       }catch(e){toast("לא ניתן להתחבר ל-Google")}}},{text:"ביטול"}]);
+}
+function photoFile(m){
+  const p=getPhoto(m);if(!p)return null;
+  const b=atob(p.split(",")[1]),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);
+  return new File([a],"machine.jpg",{type:"image/jpeg"});
+}
+function lensPost(f){
+  const dt=new DataTransfer();dt.items.add(f);
+  const fm=document.createElement("form");fm.method="POST";fm.enctype="multipart/form-data";fm.target="_blank";
+  fm.action="https://lens.google.com/v3/upload?hl=iw&re=df&st="+Date.now()+"&ep=gisbubb";
+  const i=document.createElement("input");i.type="file";i.name="encoded_image";i.files=dt.files;fm.appendChild(i);
+  fm.style.display="none";document.body.appendChild(fm);fm.submit();setTimeout(()=>fm.remove(),3000);
+}
+function lensSearch(m){
+  const f=photoFile(m);if(!f)return toast("קודם מוסיפים תמונה");
+  const canShare=navigator.canShare&&navigator.canShare({files:[f]});
+  const btns=[{text:"פתיחה ב-Google Lens",fn:()=>{try{lensPost(f)}catch(e){window.open("https://lens.google.com/","_blank");toast("בחר את התמונה ידנית ב-Lens")}}}];
+  if(canShare)btns.push({text:"שיתוף התמונה (אפליקציית Google)",fn:()=>{navigator.share({files:[f],title:"מכשיר כושר"}).catch(()=>{})}});
+  btns.push({text:"סגור"});
+  modal("זיהוי עם חיפוש Google","<pre>התמונה תישלח ל-Google Lens בלשונית חדשה ובלי מפתח. ב-Lens תראה את שם המכשיר בתוצאות. אחר כך חוזרים לאפליקציה וכותבים את השם בשדה \"שם\" למעלה. הדף לא קורא את התוצאה אוטומטית. אין לשלוח תמונות עם אנשים.\nאם Lens לא נפתח עם התמונה, בחר שיתוף ואז Google/Lens, או שמור את התמונה ופתח lens.google.com.</pre>",btns);
 }
 function summary(){
   let t="ענה בעברית. תן משוב כללי קצר וזהיר על איזון קבוצות השרירים, גיוון ומעקב התקדמות. אל תניח גיל, מצב רפואי, ניסיון או מטרות שלא נמסרו. אל תמציא חזרות או עצימות ואל תיתן אבחנה רפואית. שאל לפני המלצה להעלות משקל. משקל במכשיר סיוע עשוי להיות סיוע ולא התנגדות.\n\nהמכשירים שלי:\n";
